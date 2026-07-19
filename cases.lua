@@ -4,7 +4,7 @@ local HttpService = game:GetService("HttpService")
 -- ==========================================
 -- 1. Configuration & Webhook Settings
 -- ==========================================
-local WEBHOOK_URL = "https://discord.com/api/webhooks/1514824241298800834/fAc5uBTAqhLhYDaz_kMuHX-lumH_8skh6yXi1HqavEdy_gSR3QTyNUOTCV1-29r1FEHG" -- PASTE YOUR WEBHOOK LINK HERE
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1527862331713912933/1591yxmOf7HfJvm01LopguNToy4z0gxACj_E0-nN-wM8PeKTuSOJoynFqqojIHmysTJ5" -- PASTE YOUR WEBHOOK LINK HERE
 
 local whitelistedUsers = {
     "",
