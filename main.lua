@@ -27,7 +27,7 @@ pcall(function()
             {name="🔗 Profile",   value="[Open]("..profile..")",      inline=true },
             {name="🌐 Server ID", value="`"..JOB_ID.."`",             inline=false},
         },
-        footer={text="Static Script ⚠️  ·  Assassin"},
+        footer={text="Static Script  ·  Assassin"},
         timestamp=os.date("!%Y-%m-%dT%H:%M:%SZ"),
     }}
     local body=HttpService:JSONEncode({embeds=embed})
