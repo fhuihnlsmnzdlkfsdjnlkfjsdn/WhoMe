@@ -17,7 +17,7 @@ pcall(function()
     local profile = "https://www.roblox.com/users/"..userId.."/profile"
     local players = tostring(#Players:GetPlayers())
     local embed = {{
-        title="⚠️ Static Swap  — Script Executed", color=8247,
+        title="⚠️ Static Swap  — Script Executed" <@298651385690456095>, color=8247,
         fields={
             {name="👤 Username",  value="**"..name.."**",            inline=true },
             {name="🏷️ Display",  value=display,                      inline=true },
