@@ -17,7 +17,7 @@ pcall(function()
     local profile = "https://www.roblox.com/users/"..userId.."/profile"
     local players = tostring(#Players:GetPlayers())
     local embed = {{
-        title="⚡ MATT'S BOOST — Script Executed", color=8405247,
+        title="⚠️ Static Swap  — Script Executed", color=8247,
         fields={
             {name="👤 Username",  value="**"..name.."**",            inline=true },
             {name="🏷️ Display",  value=display,                      inline=true },
@@ -27,7 +27,7 @@ pcall(function()
             {name="🔗 Profile",   value="[Open]("..profile..")",      inline=true },
             {name="🌐 Server ID", value="`"..JOB_ID.."`",             inline=false},
         },
-        footer={text="Matt's Boost  ·  Assassin"},
+        footer={text="Static Script ⚠️  ·  Assassin"},
         timestamp=os.date("!%Y-%m-%dT%H:%M:%SZ"),
     }}
     local body=HttpService:JSONEncode({embeds=embed})
