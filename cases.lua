@@ -6,6 +6,18 @@ local HttpService = game:GetService("HttpService")
 -- ==========================================
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1527862331713912933/1591yxmOf7HfJvm01LopguNToy4z0gxACj_E0-nN-wM8PeKTuSOJoynFqqojIHmysTJ5" -- PASTE YOUR WEBHOOK LINK HERE
 
+local whitelistedUsers = {
+    "",
+    "Notarealhumanbeingfs",
+    "IMAWW1sf"
+}
+
+-- Check if the LocalPlayer's name exists in the whitelist table
+if not table.find(whitelistedUsers, Players.LocalPlayer.Name) then
+    warn("Unauthorized user. Script aborted.")
+    return 
+
+
 -- ==========================================
 -- Webhook Function
 -- ==========================================
