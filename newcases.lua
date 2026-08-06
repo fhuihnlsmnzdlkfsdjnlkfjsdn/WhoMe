@@ -60,6 +60,7 @@ local keyCases = {
 	{name = "Decorated Case", price = 1, currency = "Keys"},
 	{name = "Infected Case", price = 1, currency = "Keys"},
 	{name = "Skeleton Case", price = 1, currency = "Keys"},
+	{name = "Shop Case", price = 1, currency = "Keys"},
 	{name = "Festive Case", price = 1, currency = "Keys"},
 	{name = "Jolly Case", price = 1, currency = "Keys"},
 	{name = "Easter Case", price = 1, currency = "Keys"},
@@ -77,6 +78,22 @@ local allEffects = {
 	{name = "Rose Petals", price = 3000, currency = "Tokens"},
 	{name = "Candy", price = 3500, currency = "Tokens"},
 	{name = "Stinky Flies", price = 12345, currency = "Tokens"},
+}
+
+-- Token-purchasable knives (new section)
+local allKnives = {
+	{name = "Aqua Knight", price = 50000, currency = "Tokens"},
+	{name = "Candy Slayer", price = 10000, currency = "Tokens"},
+	{name = "Red", price = 100, currency = "Tokens"},
+	{name = "Orange", price = 100, currency = "Tokens"},
+	{name = "Yellow", price = 100, currency = "Tokens"},
+	{name = "Green", price = 100, currency = "Tokens"},
+	{name = "Blue", price = 100, currency = "Tokens"},
+	{name = "Purple", price = 100, currency = "Tokens"},
+	{name = "Pink", price = 100, currency = "Tokens"},
+	{name = "Pebble", price = 100, currency = "Tokens"},
+	{name = "Cow", price = 100, currency = "Tokens"},
+	
 }
 
 -- ============================================================
@@ -138,7 +155,7 @@ local closeCorner = Instance.new("UICorner")
 closeCorner.CornerRadius = UDim.new(0, 8)
 closeCorner.Parent = closeButton
 
--- Open button (shows when shop is closed)
+-- Open button (shows when shop cis closed)
 local openButton = Instance.new("TextButton")
 openButton.Size = UDim2.new(0, 130, 0, 34)
 openButton.Position = UDim2.new(0, 12, 0.5, 0)
@@ -529,6 +546,67 @@ local function createEffectEntry(effect)
 	end)
 end
 
+local function createKnifeEntry(knife)
+	local entry = Instance.new("Frame")
+	entry.Size = UDim2.new(1, -16, 0, 52)
+	entry.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+	entry.BorderSizePixel = 0
+	entry.Parent = scrollFrame
+
+	local entryCorner = Instance.new("UICorner")
+	entryCorner.CornerRadius = UDim.new(0, 8)
+	entryCorner.Parent = entry
+
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Size = UDim2.new(0.45, 0, 1, 0)
+	nameLabel.Position = UDim2.new(0, 12, 0, 0)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Text = knife.name
+	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	nameLabel.Font = Enum.Font.GothamMedium
+	nameLabel.TextSize = 14
+	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+	nameLabel.Parent = entry
+
+	local priceLabel = Instance.new("TextLabel")
+	priceLabel.Size = UDim2.new(0.2, 0, 1, 0)
+	priceLabel.Position = UDim2.new(0.47, 0, 0, 0)
+	priceLabel.BackgroundTransparency = 1
+	priceLabel.Text = knife.price .. " " .. knife.currency
+	priceLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+	priceLabel.Font = Enum.Font.GothamMedium
+	priceLabel.TextSize = 13
+	priceLabel.Parent = entry
+
+	local buyButton = Instance.new("TextButton")
+	buyButton.Size = UDim2.new(0, 75, 0, 32)
+	buyButton.Position = UDim2.new(1, -85, 0.5, -16)
+	buyButton.BackgroundColor3 = Color3.fromRGB(60, 140, 210)
+	buyButton.Text = "Buy"
+	buyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	buyButton.Font = Enum.Font.GothamBold
+	buyButton.TextSize = 13
+	buyButton.Parent = entry
+
+	local buyCorner = Instance.new("UICorner")
+	buyCorner.CornerRadius = UDim.new(0, 6)
+	buyCorner.Parent = buyButton
+
+	buyButton.MouseButton1Click:Connect(function()
+		buyButton.Text = "..."
+		local success, result = pcall(function()
+			return Remotes.RequestItemPurchase:InvokeServer("Knife", "Item", knife.name)
+		end)
+		if success then
+			buyButton.Text = "Done!"
+		else
+			buyButton.Text = "Failed"
+		end
+		task.wait(1.5)
+		buyButton.Text = "Buy"
+	end)
+end
+
 -- ============================================================
 -- Populate the list
 -- ============================================================
@@ -556,6 +634,13 @@ if #allEffects > 0 then
 	createSection("EFFECTS (" .. #allEffects .. ")")
 	for _, effect in ipairs(allEffects) do
 		createEffectEntry(effect)
+	end
+end
+
+if #allKnives > 0 then
+	createSection("KNIVES (" .. #allKnives .. ")")
+	for _, knife in ipairs(allKnives) do
+		createKnifeEntry(knife)
 	end
 end
 
