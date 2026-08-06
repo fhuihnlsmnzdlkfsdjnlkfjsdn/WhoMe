@@ -67,7 +67,16 @@ local keyCases = {
 	{name = "Coffin Case", price = 1, currency = "Keys"},
 	{name = "Valentine Case", price = 1, currency = "Keys"},
 	{name = "Spring Case", price = 1, currency = "Keys"},
-	
+
+}
+
+-- Token-purchasable effects (merged from EffectShop)
+local allEffects = {
+	{name = "Pumpkin Fear", price = 3000, currency = "Tokens"},
+	{name = "Autumn", price = 3000, currency = "Tokens"},
+	{name = "Rose Petals", price = 3000, currency = "Tokens"},
+	{name = "Candy", price = 3500, currency = "Tokens"},
+	{name = "Stinky Flies", price = 12345, currency = "Tokens"},
 }
 
 -- ============================================================
@@ -459,6 +468,67 @@ local function createBundleEntry(bundle)
 	end)
 end
 
+local function createEffectEntry(effect)
+	local entry = Instance.new("Frame")
+	entry.Size = UDim2.new(1, -16, 0, 52)
+	entry.BackgroundColor3 = Color3.fromRGB(40, 48, 40)
+	entry.BorderSizePixel = 0
+	entry.Parent = scrollFrame
+
+	local entryCorner = Instance.new("UICorner")
+	entryCorner.CornerRadius = UDim.new(0, 8)
+	entryCorner.Parent = entry
+
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Size = UDim2.new(0.45, 0, 1, 0)
+	nameLabel.Position = UDim2.new(0, 12, 0, 0)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Text = effect.name
+	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	nameLabel.Font = Enum.Font.GothamMedium
+	nameLabel.TextSize = 14
+	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+	nameLabel.Parent = entry
+
+	local priceLabel = Instance.new("TextLabel")
+	priceLabel.Size = UDim2.new(0.2, 0, 1, 0)
+	priceLabel.Position = UDim2.new(0.47, 0, 0, 0)
+	priceLabel.BackgroundTransparency = 1
+	priceLabel.Text = effect.price .. " " .. effect.currency
+	priceLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+	priceLabel.Font = Enum.Font.GothamMedium
+	priceLabel.TextSize = 13
+	priceLabel.Parent = entry
+
+	local buyButton = Instance.new("TextButton")
+	buyButton.Size = UDim2.new(0, 75, 0, 32)
+	buyButton.Position = UDim2.new(1, -85, 0.5, -16)
+	buyButton.BackgroundColor3 = Color3.fromRGB(60, 140, 210)
+	buyButton.Text = "Buy"
+	buyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	buyButton.Font = Enum.Font.GothamBold
+	buyButton.TextSize = 13
+	buyButton.Parent = entry
+
+	local buyCorner = Instance.new("UICorner")
+	buyCorner.CornerRadius = UDim.new(0, 6)
+	buyCorner.Parent = buyButton
+
+	buyButton.MouseButton1Click:Connect(function()
+		buyButton.Text = "..."
+		local success, result = pcall(function()
+			return Remotes.RequestItemPurchase:InvokeServer("Tokens", "Item", effect.name)
+		end)
+		if success then
+			buyButton.Text = "Done!"
+		else
+			buyButton.Text = "Failed"
+		end
+		task.wait(1.5)
+		buyButton.Text = "Buy"
+	end)
+end
+
 -- ============================================================
 -- Populate the list
 -- ============================================================
@@ -479,6 +549,13 @@ if #allBundles > 0 then
 	createSection("BUNDLES (" .. #allBundles .. ")")
 	for _, bundle in ipairs(allBundles) do
 		createBundleEntry(bundle)
+	end
+end
+
+if #allEffects > 0 then
+	createSection("EFFECTS (" .. #allEffects .. ")")
+	for _, effect in ipairs(allEffects) do
+		createEffectEntry(effect)
 	end
 end
 
