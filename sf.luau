@@ -1,0 +1,387 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TeleportService = game:GetService("TeleportService")
+local StarterGui = game:GetService("StarterGui")
+local LogService = game:GetService("LogService")
+local VirtualUser = game:GetService("VirtualUser")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+
+queueonteleport(([[loadstring(game:HttpGet("https://raw.githubusercontent.com/fhuihnlsmnzdlkfsdjnlkfjsdn/WhoMe/refs/heads/main/sf.luau"))()]]))
+
+local configPath = "spin.json"
+
+if not isfile(configPath) then
+    error("Config file not found at executor workspace path: " .. configPath)
+end
+
+local ok, decoded = pcall(function()
+    return HttpService:JSONDecode(readfile(configPath))
+end)
+
+if not ok then
+    error("Could not parse " .. configPath .. " as JSON: " .. tostring(decoded))
+end
+
+local Config = decoded.config or decoded
+if type(Config) ~= "table" then
+    error("Expected spin.json to contain a JSON object")
+end
+
+local required = {"MainAccount", "SpinRadius", "SpinSpeed", "AutoRejoinRounds", "WebhookURL"}
+for _, k in ipairs(required) do
+    if Config[k] == nil then
+        error("Missing spin.config field: " .. k)
+    end
+end
+
+local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
+local LocalHumanoid
+
+local cachedClanAllTimePoints = "0"
+local cachedClanSeasonPoints = "0"
+local cachedMySeasonPoints = "0"
+local cachedMyAllTimePoints = "0"
+
+local startingMySeasonPoints = nil
+local pointsEarnedInServer = 0
+
+local requestFunc = syn and syn.request or http_request or request
+
+local function notify(title, text, duration)
+    pcall(function()
+        StarterGui:SetCore("SendNotification", {
+            Title = title,
+            Text = text,
+            Duration = duration or 3,
+        })
+    end)
+end
+
+local function characterAdded(Character)
+    if not Character then return end
+    LocalRootPart = Character:WaitForChild("HumanoidRootPart", 10)
+    LocalHumanoid = Character:WaitForChild("Humanoid", 10)
+end
+
+if LocalPlayer.Character then characterAdded(LocalPlayer.Character) end
+LocalPlayer.CharacterAdded:Connect(characterAdded)
+
+local PlayerScripts = LocalPlayer:WaitForChild("PlayerScripts", 10)
+local HitCheck = PlayerScripts and PlayerScripts:WaitForChild("localknifehandler", 10):WaitForChild("HitCheck", 10)
+
+local isMain = (string.lower(LocalPlayer.Name) == string.lower(Config.MainAccount))
+
+getgenv().LastHitTime = 0
+getgenv().NextHitDelay = 0.75
+
+local function hasKnife(p)
+    if not p then return false end
+    local char = workspace:FindFirstChild(p.Name)
+    local backpack = p:FindFirstChild("Backpack")
+    local holding = char and (char:FindFirstChild("Knife") or char:FindFirstChild("Knife2"))
+    local inInv = backpack and (backpack:FindFirstChild("Knife") or backpack:FindFirstChild("Knife2"))
+    return holding or inInv
+end
+
+if shared.spizz then
+    shared.spizz:Disconnect()
+end
+
+shared.spizz = RunService.Heartbeat:Connect(function()
+    pcall(function()
+        if not LocalRootPart then return end
+
+        local MainPlayer = Players:FindFirstChild(Config.MainAccount)
+        local MainCharacter = MainPlayer and workspace:FindFirstChild(MainPlayer.Name)
+        local MainRootPart = MainCharacter and MainCharacter:FindFirstChild("HumanoidRootPart")
+
+        if not isMain then
+            if hasKnife(LocalPlayer) and MainRootPart then
+                workspace.Gravity = -2
+                if LocalHumanoid then
+                    LocalHumanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+                end
+
+                local angle = os.clock() * Config.SpinSpeed
+                local x = math.cos(angle) * Config.SpinRadius
+                local z = math.sin(angle) * Config.SpinRadius
+                local targetCFrame = CFrame.new(MainRootPart.Position + Vector3.new(x, -0.1, z), MainRootPart.Position)
+
+                LocalRootPart.CFrame = LocalRootPart.CFrame:Lerp(targetCFrame, 0.8)
+                LocalRootPart.AssemblyLinearVelocity = Vector3.new(0, 0.01, 0)
+            else
+                workspace.Gravity = 196.2
+            end
+        else
+            workspace.Gravity = 196.2
+
+            if hasKnife(LocalPlayer) and HitCheck then
+                local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 5)
+                local ScreenGui = PlayerGui and PlayerGui:WaitForChild("ScreenGui", 5)
+                local UI = ScreenGui and ScreenGui:WaitForChild("UI", 5)
+
+                if UI and UI:FindFirstChild("Target") and UI.Target.Visible then
+                    local TargetPlayer = Players:FindFirstChild(UI.Target.TargetText.Text)
+                    local TargetCharacter = TargetPlayer and workspace:FindFirstChild(TargetPlayer.Name)
+                    local TargetRootPart = TargetCharacter and TargetCharacter:FindFirstChild("HumanoidRootPart")
+
+                    if TargetRootPart and hasKnife(TargetPlayer) then
+                        if os.clock() - getgenv().LastHitTime > getgenv().NextHitDelay then
+                            if (LocalRootPart.Position - TargetRootPart.Position).Magnitude < 7.5 then
+                                HitCheck:Fire(TargetCharacter)
+                                getgenv().LastHitTime = os.clock()
+                                getgenv().NextHitDelay = 0.75
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end)
+
+local currentJobId = game.JobId
+local rounds = 0
+local rejoining = false
+local scriptReady = false
+
+local function sendWebhook(round, triggerReason)
+    if not isMain then return end
+    if Config.WebhookURL == "" or not requestFunc then return end
+
+    local playerList = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        table.insert(playerList, p.Name)
+    end
+    local serverPlayersText = table.concat(playerList, ", ")
+
+    local statusText = "Completed round " .. tostring(round)
+    if triggerReason then
+        statusText = triggerReason
+    end
+
+    local avatarUrl = "https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=" .. tostring(LocalPlayer.UserId) .. "&size=150x150&format=Png&isCircular=false"
+    local finalIcon = ""
+
+    pcall(function()
+        local response = requestFunc({
+            Url = avatarUrl,
+            Method = "GET"
+        })
+        if response and response.Body then
+            local data = HttpService:JSONDecode(response.Body)
+            if data and data.data and data.data[1] and data.data[1].imageUrl then
+                finalIcon = data.data[1].imageUrl
+            end
+        end
+    end)
+
+    local embedData = {
+        ["embeds"] = { {
+            ["title"] = "Boosting Tracker - Developed by a Skid",
+            ["color"] = 16744429,
+            ["thumbnail"] = finalIcon ~= "" and { ["url"] = finalIcon } or nil,
+            ["fields"] = {
+                { ["name"] = "Account", ["value"] = LocalPlayer.Name, ["inline"] = true },
+                { ["name"] = "Status", ["value"] = statusText, ["inline"] = true },
+                { ["name"] = "Points Earned In Server", ["value"] = tostring(pointsEarnedInServer), ["inline"] = false },
+                { ["name"] = "Clan Season Points", ["value"] = cachedClanSeasonPoints, ["inline"] = true },
+                { ["name"] = "Clan All Time Points", ["value"] = cachedClanAllTimePoints, ["inline"] = true },
+                { ["name"] = "My Season Points", ["value"] = cachedMySeasonPoints, ["inline"] = true },
+                { ["name"] = "My All-Time Points", ["value"] = cachedMyAllTimePoints, ["inline"] = true },
+                { ["name"] = "Server Players", ["value"] = "```\n" .. serverPlayersText .. "\n```", ["inline"] = false }
+            },
+            ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
+        } }
+    }
+
+    pcall(function()
+        requestFunc({
+            Url = Config.WebhookURL,
+            Method = "POST",
+            Headers = { ["Content-Type"] = "application/json" },
+            Body = HttpService:JSONEncode(embedData)
+        })
+    end)
+end
+
+local function _safeTeleport()
+    TeleportService:TeleportToPlaceInstance(game.PlaceId, currentJobId, LocalPlayer)
+end
+
+local function incrementRounds()
+    if not scriptReady then return end
+    rounds += 1
+    
+    if rounds == 1 then
+        sendWebhook(rounds)
+    end
+
+    notify("Boost Counter", "Round " .. rounds .. " completed!", 3)
+
+    if not isMain then
+        local targetRounds = Config.AutoRejoinRounds
+        if rounds >= targetRounds and not rejoining then
+            rejoining = true
+            notify("Auto Rejoin", "Target rounds reached! Rejoining...", 5)
+            task.wait(2)
+            queueonteleport([[
+                        task.wait(0.5)
+                    game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("RequestTeleport"):FireServer("pro")]])
+                game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("RequestTeleport"):FireServer("freeplay")
+        end
+    end
+end
+
+pcall(function()
+    local SendServerClans = ReplicatedStorage:WaitForChild("Remotes", 5):WaitForChild("ClanRemotes", 5):WaitForChild("SendServerClans", 5)
+    SendServerClans.OnClientEvent:Connect(function(clansData)
+        if type(clansData) == "table" then
+            for _, clan in ipairs(clansData) do
+                if type(clan) == "table" then
+                    local membersList = clan[5]
+                    if type(membersList) == "table" then
+                        for _, memberData in ipairs(membersList) do
+                            if type(memberData) == "table" then
+                                local targetUserString = string.lower(Config.MainAccount)
+                                local foundPlayer = Players:FindFirstChild(Config.MainAccount)
+                                local targetUserId = foundPlayer and foundPlayer.UserId
+
+                                if memberData[1] == targetUserId or (memberData[2] and string.lower(tostring(memberData[2])) == targetUserString) then
+                                    local newClanAllTime = tostring(clan[9] or cachedClanAllTimePoints)
+                                    local newClanSeason = tostring(clan[10] or cachedClanSeasonPoints)
+                                    local newMySeason = tostring(memberData[3] or cachedMySeasonPoints)
+                                    local newMyAllTime = tostring(memberData[4] or cachedMyAllTimePoints)
+
+                                    local currentMySeasonNum = tonumber(newMySeason) or 0
+                                    if not startingMySeasonPoints then
+                                        startingMySeasonPoints = currentMySeasonNum
+                                    end
+                                    pointsEarnedInServer = currentMySeasonNum - startingMySeasonPoints
+
+                                    local shouldLiveUpdate = false
+                                    if newMySeason ~= cachedMySeasonPoints or newMyAllTime ~= cachedMyAllTimePoints or newClanAllTime ~= cachedClanAllTimePoints then
+                                        if scriptReady then
+                                            shouldLiveUpdate = true
+                                        end
+                                    end
+
+                                    cachedClanAllTimePoints = newClanAllTime
+                                    cachedClanSeasonPoints = newClanSeason
+                                    cachedMySeasonPoints = newMySeason
+                                    cachedMyAllTimePoints = newMyAllTime
+
+                                    if shouldLiveUpdate then
+                                        sendWebhook(rounds, "Live Points Update")
+                                    end
+                                    return
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end)
+
+task.spawn(function()
+    while task.wait(60) do
+        pcall(function()
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton1(Vector2.new(math.random(0, 100), math.random(0, 100)))
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChildOfClass("Humanoid") then
+                char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end)
+    end
+end)
+
+local lastMessageTime = 0
+local debounceThreshold = 0.5
+
+LogService.MessageOut:Connect(function(message, messageType)
+    if not scriptReady then return end
+    if messageType == Enum.MessageType.MessageError then return end
+
+    local now = os.clock()
+    if now - lastMessageTime >= debounceThreshold then
+        lastMessageTime = now
+
+        if string.find(message, "LOAD PROGRESS") then
+            incrementRounds()
+        end
+
+        local msg = string.lower(message)
+        if (string.find(msg, "idle") or string.find(msg, "kicked")) and rounds > 0 and not isMain then
+            if not rejoining then
+                rejoining = true
+                notify("System", "Idle or disconnect mitigation triggered. Rejoining...", 5)
+                queueonteleport([[
+                        task.wait(0.5)
+                    game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("RequestTeleport"):FireServer("pro")]])
+                game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("RequestTeleport"):FireServer("freeplay")
+            
+            end
+        end
+    end
+
+    if string.find(message, "SslConnectFail") then
+        if not rejoining then
+            rejoining = true
+            notify("Anti-Glitched Server", "Roblox SSL Connection Error Detected! Rejoining server...", 5)
+            task.wait(2) 
+            queueonteleport([[
+                        task.wait(0.5)
+                    game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("RequestTeleport"):FireServer("pro")]])
+                game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("RequestTeleport"):FireServer("freeplay")
+        end
+    end
+end)
+
+task.delay(10, function()
+    scriptReady = true
+    notify("System", "Script fully active. Role: " .. (isMain and "MAIN (Target UI Aura)" or "ALT (Conditional Circle)"), 4)
+
+    if isMain and Config.WebhookURL ~= "" and requestFunc then
+        local avatarUrl = "https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=" .. tostring(LocalPlayer.UserId) .. "&size=150x150&format=Png&isCircular=false"
+        local finalIcon = ""
+
+        pcall(function()
+            local response = requestFunc({
+                Url = avatarUrl,
+                Method = "GET"
+            })
+            if response and response.Body then
+                local data = HttpService:JSONDecode(response.Body)
+                if data and data.data and data.data[1] and data.data[1].imageUrl then
+                    finalIcon = data.data[1].imageUrl
+                end
+            end
+        end)
+        
+        local connectData = {
+            ["embeds"] = { {
+                ["title"] = "Boosting Tracker - Devloped by a Skid - Connected",
+                ["description"] = "Tracking initialized successfully for account: " .. LocalPlayer.Name,
+                ["thumbnail"] = finalIcon ~= "" and { ["url"] = finalIcon } or nil,
+                ["color"] = 16744429,
+                ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
+            } }
+        }
+        pcall(function()
+            requestFunc({
+                Url = Config.WebhookURL,
+                Method = "POST",
+                Headers = { ["Content-Type"] = "application/json" },
+                Body = HttpService:JSONEncode(connectData)
+            })
+        end)
+    end
+end)
