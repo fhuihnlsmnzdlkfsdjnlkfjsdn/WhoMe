@@ -231,7 +231,7 @@ local function incrementRounds()
             notify("Auto Rejoin", "Target rounds reached! Rejoining...", 5)
             task.wait(2)
             queueonteleport([[
-                        task.wait(0.5)
+                        task.wait(0.2)
                     game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("RequestTeleport"):FireServer("pro")]])
                 game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("RequestTeleport"):FireServer("freeplay")
         end
@@ -324,7 +324,7 @@ LogService.MessageOut:Connect(function(message, messageType)
                 rejoining = true
                 notify("System", "Idle or disconnect mitigation triggered. Rejoining...", 5)
                 queueonteleport([[
-                        task.wait(0.5)
+                        task.wait(0.2)
                     game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("RequestTeleport"):FireServer("pro")]])
                 game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("RequestTeleport"):FireServer("freeplay")
             
