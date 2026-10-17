@@ -28,7 +28,7 @@ if type(Config) ~= "table" then
     error("Expected spin.json to contain a JSON object")
 end
 
-local required = {"MainAccount", "SpinRadius", "SpinSpeed", "AutoRejoinRounds", "WebhookURL"}
+local required = {"MainAccount", "SpinRadius", "SpinSpeed", "AutoRejoinRounds", "WebhookURL", "WhitelistedUserIds"}
 for _, k in ipairs(required) do
     if Config[k] == nil then
         error("Missing spin.config field: " .. k)
@@ -38,6 +38,31 @@ end
 local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 if not game:IsLoaded() then
     game.Loaded:Wait()
+end
+
+local whitelistedUserIds = {}
+for _, userId in ipairs(Config.WhitelistedUserIds) do
+    whitelistedUserIds[userId] = true
+end
+
+local leavingForUnwhitelistedPlayer = false
+
+local function leaveIfUnwhitelisted(player)
+    if game.PlaceId ~= 860428890
+        or player == LocalPlayer
+        or whitelistedUserIds[player.UserId]
+        or leavingForUnwhitelistedPlayer then
+        return
+    end
+
+    leavingForUnwhitelistedPlayer = true
+    LocalPlayer:Kick("An unwhitelisted player joined.")
+end
+
+Players.PlayerAdded:Connect(leaveIfUnwhitelisted)
+
+for _, player in ipairs(Players:GetPlayers()) do
+    leaveIfUnwhitelisted(player)
 end
 
 local LocalHumanoid
