@@ -56,7 +56,9 @@ local function leaveIfUnwhitelisted(player)
     end
 
     leavingForUnwhitelistedPlayer = true
-    LocalPlayer:Kick("An unwhitelisted player joined.")
+    local message = string.format("Unwhitelisted player joined: %s:%d", player.Name, player.UserId)
+    print(message)
+    LocalPlayer:Kick(message)
 end
 
 Players.PlayerAdded:Connect(leaveIfUnwhitelisted)
